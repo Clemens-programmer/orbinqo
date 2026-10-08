@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#10172a" />
+  <title>Mein Web-Computer</title>
+  <style>
+    :root {
+      --accent: #6d8cff;
+      --accent-2: #8b5cf6;
+      --text: #f7f9ff;
+      --muted: rgba(239,244,255,.70);
+      --glass: rgba(15,23,42,.63);
+      --glass-strong: rgba(10,15,30,.88);
+      --border: rgba(255,255,255,.14);
+      --shadow: 0 24px 70px rgba(0,0,0,.38);
+      --taskbar-h: 70px;
+    }
+    * { box-sizing: border-box; }
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: #0b1020;
+      user-select: none;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .desktop {
+      position:relative; width:100%; height:100%; overflow:hidden;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(76,111,255,.48), transparent 31%),
+        radial-gradient(circle at 84% 18%, rgba(168,85,247,.42), transparent 29%),
+        radial-gradient(circle at 52% 85%, rgba(14,165,233,.31), transparent 34%),
+        linear-gradient(145deg,#071020 0%,#172554 48%,#171133 100%);
+    }
+    .desktop::before {
+      content:""; position:absolute; inset:0; pointer-events:none; opacity:.32;
+      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+      background-size: 38px 38px;
+      mask-image: linear-gradient(to bottom, #000, transparent 90%);
+    }
+    .top-info { position:absolute; top:24px; right:26px; text-align:right; text-shadow:0 2px 16px rgba(0,0,0,.35); pointer-events:none; }
+    .top-info .time { font-size:clamp(30px,4vw,54px); font-weight:650; letter-spacing:-2px; }
+    .top-info .date { color:var(--muted); font-size:14px; }
+    .desktop-icons {
+      position:absolute; inset:20px 20px calc(var(--taskbar-h) + 28px) 20px;
+      display:grid; grid-template-columns:repeat(auto-fill, 92px); grid-auto-rows:104px; gap:10px; align-content:start;
+    }
+    .desktop-icon {
+      width:92px; height:100px; border:0; background:transparent; border-radius:16px; padding:8px 5px;
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:7px; cursor:pointer;
+      transition:.18s ease;
+    }
+    .desktop-icon:hover, .desktop-icon:focus-visible { background:rgba(255,255,255,.11); outline:1px solid rgba(255,255,255,.14); transform:translateY(-2px); }
+    .app-symbol {
+      overflow:hidden;
+      width:54px; height:54px; border-radius:16px; display:grid; place-items:center; font-size:28px;
+      background:linear-gradient(145deg,var(--c1),var(--c2)); box-shadow:0 12px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.35);
+    }
+    .app-symbol img, .title-icon img, .task-btn img { width:100%; height:100%; object-fit:cover; display:block; }
+    .title-icon img { border-radius:9px; }
+    .task-btn img { border-radius:12px; }
+    .desktop-icon .label { max-width:84px; font-size:12px; line-height:1.18; text-align:center; text-shadow:0 2px 8px #000; overflow-wrap:anywhere; }
+    .taskbar {
+      position:absolute; left:50%; bottom:12px; transform:translateX(-50%); height:var(--taskbar-h);
+      max-width:calc(100% - 24px); min-width:min(720px,calc(100% - 24px)); padding:9px 12px;
+      display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:22px;
+      background:rgba(8,14,28,.58); backdrop-filter:blur(24px) saturate(145%); box-shadow:0 18px 48px rgba(0,0,0,.34);
+      z-index:5000;
+    }
+    .task-btn {
+      flex:0 0 auto; width:50px; height:50px; border:0; border-radius:15px; background:rgba(255,255,255,.06); cursor:pointer;
+      display:grid; place-items:center; font-size:22px; transition:.18s ease; position:relative;
+    }
+    .task-btn:hover { background:rgba(255,255,255,.14); transform:translateY(-2px); }
+    .start-btn { background:linear-gradient(145deg,var(--accent),var(--accent-2)); box-shadow:0 9px 22px rgba(89,92,255,.3); font-weight:800; }
+    .task-divider { width:1px; height:36px; background:var(--border); margin:0 2px; }
+    .running-apps { display:flex; gap:7px; min-width:0; overflow:auto; scrollbar-width:none; }
+    .running-apps::-webkit-scrollbar { display:none; }
+    .running-app.active::after { content:""; position:absolute; bottom:4px; width:18px; height:3px; border-radius:9px; background:#91a8ff; }
+    .tray { margin-left:auto; display:flex; align-items:center; gap:8px; padding:0 8px; color:var(--muted); font-size:12px; white-space:nowrap; }
+    .tray-clock { text-align:right; color:#fff; line-height:1.25; }
+    .start-menu {
+      position:absolute; z-index:6000; left:50%; bottom:92px; transform:translateX(-50%) translateY(14px) scale(.98);
+      width:min(580px,calc(100% - 28px)); max-height:min(660px,calc(100% - 120px)); padding:18px;
+      border:1px solid var(--border); border-radius:26px; background:rgba(9,15,30,.84); backdrop-filter:blur(30px) saturate(145%);
+      box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:.18s ease; overflow:auto;
+    }
+    .start-menu.open { opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0) scale(1); }
+    .search { width:100%; border:1px solid var(--border); padding:13px 15px; border-radius:15px; background:rgba(255,255,255,.075); color:#fff; outline:none; user-select:text; }
+    .search:focus { border-color:rgba(144,164,255,.8); box-shadow:0 0 0 3px rgba(109,140,255,.15); }
+    .section-title { margin:18px 3px 10px; font-size:13px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .start-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
+    .menu-app { border:0; background:transparent; border-radius:17px; padding:12px 8px; cursor:pointer; display:flex; flex-direction:column; gap:7px; align-items:center; }
+    .menu-app:hover { background:rgba(255,255,255,.09); }
+    .menu-app .app-symbol { width:48px; height:48px; font-size:24px; }
+    .menu-app span:last-child { font-size:12px; text-align:center; }
+    .menu-footer { margin-top:15px; padding:12px 5px 0; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; }
+    .window {
+      position:absolute; z-index:100; min-width:320px; min-height:220px; width:min(1000px,82vw); height:min(690px,76vh);
+      left:50%; top:46%; transform:translate(-50%,-50%) scale(.96); border-radius:20px; overflow:hidden;
+      background:#f8fafc; border:1px solid rgba(255,255,255,.20); box-shadow:var(--shadow); opacity:0; pointer-events:none;
+      transition:opacity .15s ease, transform .15s ease;
+    }
+    .window.visible { opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1); }
+    .window.maximized { left:8px!important; top:8px!important; transform:none!important; width:calc(100% - 16px)!important; height:calc(100% - var(--taskbar-h) - 30px)!important; border-radius:16px; }
+    .window.minimized { display:none; }
+    .titlebar { height:52px; padding:0 10px 0 15px; display:flex; align-items:center; gap:10px; background:var(--glass-strong); color:#fff; cursor:move; }
+    .title-icon { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; background:linear-gradient(145deg,var(--c1),var(--c2)); }
+    .title-text { font-weight:650; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .win-controls { margin-left:auto; display:flex; gap:5px; }
+    .win-btn { width:38px; height:34px; border:0; background:transparent; border-radius:10px; cursor:pointer; font-size:15px; }
+    .win-btn:hover { background:rgba(255,255,255,.12); }
+    .win-btn.close:hover { background:#e5484d; }
+    .app-frame { display:block; width:100%; height:calc(100% - 52px); border:0; background:white; }
+    .empty-state { height:100%; display:grid; place-items:center; color:#334155; text-align:center; padding:24px; }
+    .empty-state code { user-select:text; background:#e2e8f0; padding:3px 7px; border-radius:6px; }
+    .toast { position:absolute; z-index:9000; top:20px; left:50%; transform:translate(-50%,-20px); padding:12px 16px; border-radius:14px; background:rgba(9,15,30,.92); border:1px solid var(--border); box-shadow:var(--shadow); opacity:0; transition:.2s; pointer-events:none; font-size:13px; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (max-width:700px) {
+      :root { --taskbar-h:62px; }
+      .taskbar { bottom:8px; height:62px; padding:7px 8px; min-width:calc(100% - 16px); border-radius:19px; }
+      .task-btn { width:46px; height:46px; }
+      .tray .status { display:none; }
+      .top-info { top:18px; right:18px; }
+      .desktop-icons { inset:16px 10px 82px; grid-template-columns:repeat(4,1fr); grid-auto-rows:94px; }
+      .desktop-icon { width:100%; height:92px; }
+      .app-symbol { width:49px; height:49px; }
+      .start-grid { grid-template-columns:repeat(3,1fr); }
+      .window, .window.visible { left:6px!important; top:6px!important; transform:none!important; width:calc(100% - 12px)!important; height:calc(100% - var(--taskbar-h) - 22px)!important; border-radius:15px; }
+      .titlebar { cursor:default; }
+    }
+  </style>
+</head>
+<body>
+  <main class="desktop" id="desktop">
+    <div class="top-info"><div class="time" id="heroTime">--:--</div><div class="date" id="heroDate">---</div></div>
+    <section class="desktop-icons" id="desktopIcons" aria-label="Apps"></section>
+    <section class="start-menu" id="startMenu" aria-label="Startmenü">
+      <input class="search" id="appSearch" type="search" placeholder="Apps durchsuchen …" autocomplete="off" />
+      <div class="section-title">Alle Apps</div>
+      <div class="start-grid" id="startGrid"></div>
+      <div class="menu-footer"><span>Mein Web-Computer</span><button id="chooseFolder" style="border:0;border-radius:10px;padding:8px 11px;background:rgba(255,255,255,.1);cursor:pointer">Programme laden</button></div>
+      <input id="folderInput" type="file" webkitdirectory multiple hidden>
+    </section>
+    <div id="windows"></div>
+    <nav class="taskbar" aria-label="Taskleiste">
+      <button class="task-btn start-btn" id="startButton" title="Start" aria-label="Startmenü">◆</button>
+      <div class="task-divider"></div>
+      <div class="running-apps" id="runningApps"></div>
+      <div class="tray"><span class="status">● Online</span><div class="tray-clock"><div id="trayTime">--:--</div><div id="trayDate">--.--.----</div></div></div>
+    </nav>
+    <div class="toast" id="toast"></div>
+  </main>
+
+  <script>
+    /* ============================================================
+       PROGRAMM-ORDNER
+
+       Klicke im Startmenue auf "Programme laden" und waehle den
+       Hauptordner aus. Darin darf es beliebig viele Programmordner geben:
+
+       Hauptordner/
+       |-- web_computer.html
+       |-- Wetter/
+       |   |-- wetter.html
+       |   `-- Icon/
+       |       `-- wetter.jpg
+       `-- Notizen/
+           |-- index.html
+           `-- Icon/
+               `-- icon.jpeg
+
+       Der Name des Programmordners wird als App-Name verwendet.
+       ============================================================ */
+    const APPS = [
+      { id:'willkommen', name:'Willkommen', icon:'👋', type:'welcome', color1:'#6d8cff', color2:'#7c3aed' }
+    ];
+    const generatedUrls = [];
+    const $ = s => document.querySelector(s);
+    const desktopIcons=$('#desktopIcons'), startGrid=$('#startGrid'), windows=$('#windows'), runningApps=$('#runningApps');
+    const startMenu=$('#startMenu'), startButton=$('#startButton'), search=$('#appSearch'), toast=$('#toast');
+    const folderInput=$('#folderInput'), chooseFolder=$('#chooseFolder');
+    let topZ=100, toastTimer;
+
+    function appVars(app){ return `--c1:${app.color1||'#64748b'};--c2:${app.color2||'#334155'}`; }
+    function iconMarkup(app){ return app.iconUrl ? `<img src="${app.iconUrl}" alt="">` : (app.icon||'◻'); }
+    function renderApps(filter=''){
+      const visible=APPS.filter(a=>a.name.toLowerCase().includes(filter.toLowerCase()));
+      desktopIcons.innerHTML=visible.map(a=>`<button class="desktop-icon" data-open="${a.id}" title="${a.name}"><span class="app-symbol" style="${appVars(a)}">${iconMarkup(a)}</span><span class="label">${a.name}</span></button>`).join('');
+      startGrid.innerHTML=visible.map(a=>`<button class="menu-app" data-open="${a.id}"><span class="app-symbol" style="${appVars(a)}">${iconMarkup(a)}</span><span>${a.name}</span></button>`).join('');
+    }
+    function welcomeDoc(){
+      return `<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>body{margin:0;font-family:system-ui;background:linear-gradient(145deg,#f8fafc,#e8edff);color:#172033;min-height:100vh;display:grid;place-items:center}.card{width:min(720px,calc(100% - 40px));background:white;border-radius:24px;padding:clamp(24px,5vw,48px);box-shadow:0 20px 60px #64748b33}h1{font-size:clamp(30px,5vw,52px);margin:0 0 12px;letter-spacing:-2px}p{line-height:1.65;color:#526077}code{background:#eef2ff;padding:3px 7px;border-radius:7px;color:#4338ca}ol{line-height:1.8;padding-left:22px}.pill{display:inline-block;background:#e0e7ff;color:#4338ca;border-radius:99px;padding:7px 11px;font-weight:700;font-size:12px}</style><div class="card"><span class="pill">DEIN WEB-DESKTOP</span><h1>Willkommen 👋</h1><p>Diese Oberfläche öffnet deine HTML-Apps direkt im selben Browser-Tab. Jede App erscheint in einem eigenen Fenster.</p><ol><li>Lege fuer jedes Programm einen eigenen Ordner an.</li><li>Lege die HTML-Datei direkt in den Programmordner.</li><li>Lege das JPG- oder JPEG-Icon in den Unterordner <code>Icon</code>.</li><li>Klicke im Startmenue auf <code>Programme laden</code> und waehle den Hauptordner.</li></ol><p>Du kannst Fenster verschieben, maximieren, minimieren und über die Taskleiste erneut öffnen.</p></div></html>`;
+    }
+    function showToast(text){ toast.textContent=text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove('show'),2600); }
+    function openApp(id){
+      const app=APPS.find(a=>a.id===id); if(!app)return;
+      let win=document.querySelector(`.window[data-id="${id}"]`);
+      if(!win){
+        win=document.createElement('section'); win.className='window'; win.dataset.id=id;
+        win.innerHTML=`<header class="titlebar"><span class="title-icon" style="${appVars(app)}">${iconMarkup(app)}</span><span class="title-text">${app.name}</span><div class="win-controls"><button class="win-btn minimize" title="Minimieren">—</button><button class="win-btn maximize" title="Maximieren">□</button><button class="win-btn close" title="Schließen">×</button></div></header>`;
+        const frame=document.createElement('iframe'); frame.className='app-frame'; frame.title=app.name;
+        if(app.type==='welcome') frame.srcdoc=welcomeDoc(); else frame.src=app.url || app.file;
+        frame.addEventListener('error',()=>showToast(`${app.name} konnte nicht geladen werden.`));
+        win.appendChild(frame); windows.appendChild(win); wireWindow(win,app); addTaskButton(app);
+        requestAnimationFrame(()=>win.classList.add('visible'));
+      } else { win.classList.remove('minimized'); requestAnimationFrame(()=>win.classList.add('visible')); }
+      focusWindow(win); startMenu.classList.remove('open');
+    }
+    function addTaskButton(app){
+      const b=document.createElement('button'); b.className='task-btn running-app'; b.dataset.task=app.id; b.title=app.name; b.innerHTML=iconMarkup(app); b.style.cssText=appVars(app);
+      b.onclick=()=>{ const w=document.querySelector(`.window[data-id="${app.id}"]`); if(!w)return; if(w.classList.contains('minimized')){w.classList.remove('minimized');focusWindow(w)}else if(w.style.zIndex==topZ){w.classList.add('minimized');b.classList.remove('active')}else focusWindow(w); };
+      runningApps.appendChild(b);
+    }
+    function focusWindow(win){ topZ++; win.style.zIndex=topZ; document.querySelectorAll('.running-app').forEach(b=>b.classList.toggle('active',b.dataset.task===win.dataset.id)); }
+    function wireWindow(win,app){
+      const bar=win.querySelector('.titlebar');
+      win.addEventListener('pointerdown',()=>focusWindow(win));
+      win.querySelector('.close').onclick=()=>{ win.remove(); document.querySelector(`[data-task="${app.id}"]`)?.remove(); };
+      win.querySelector('.minimize').onclick=()=>{win.classList.add('minimized');document.querySelector(`[data-task="${app.id}"]`)?.classList.remove('active')};
+      win.querySelector('.maximize').onclick=()=>win.classList.toggle('maximized');
+      bar.ondblclick=()=>win.classList.toggle('maximized');
+      let drag=false, sx=0, sy=0, ox=0, oy=0;
+      bar.addEventListener('pointerdown',e=>{ if(e.target.closest('button')||win.classList.contains('maximized')||innerWidth<701)return; drag=true; const r=win.getBoundingClientRect(); sx=e.clientX;sy=e.clientY;ox=r.left;oy=r.top; win.style.transform='none';win.style.left=ox+'px';win.style.top=oy+'px';bar.setPointerCapture(e.pointerId); });
+      bar.addEventListener('pointermove',e=>{ if(!drag)return; win.style.left=Math.max(0,Math.min(innerWidth-win.offsetWidth,ox+e.clientX-sx))+'px';win.style.top=Math.max(0,Math.min(innerHeight-90,oy+e.clientY-sy))+'px'; });
+      bar.addEventListener('pointerup',()=>drag=false);
+    }
+
+    function safeId(name){
+      return 'app-' + name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    }
+    function clearLoadedApps(){
+      document.querySelectorAll('.window').forEach(w=>{ if(w.dataset.id!=='willkommen') w.remove(); });
+      document.querySelectorAll('.running-app').forEach(b=>{ if(b.dataset.task!=='willkommen') b.remove(); });
+      APPS.splice(1);
+      generatedUrls.splice(0).forEach(url=>URL.revokeObjectURL(url));
+    }
+    async function loadPrograms(files){
+      clearLoadedApps();
+      if(!files.length){ showToast('Es wurde kein Ordner ausgewaehlt.'); return; }
+      const groups=new Map();
+      for(const file of files){
+        const parts=(file.webkitRelativePath||file.name).replace(/\\/g,'/').split('/').filter(Boolean);
+        if(parts.length<3) continue;
+        const program=parts[1], relative=parts.slice(2);
+        if(!groups.has(program)) groups.set(program,{html:[],icons:[],all:new Map()});
+        const group=groups.get(program), ext=(file.name.split('.').pop()||'').toLowerCase();
+        group.all.set(relative.join('/').toLowerCase(),file);
+        if(relative.length===1 && (ext==='html'||ext==='htm')) group.html.push(file);
+        if(relative.length===2 && relative[0].toLowerCase()==='icon' && (ext==='jpg'||ext==='jpeg')) group.icons.push(file);
+      }
+      const colors=[['#06b6d4','#2563eb'],['#f59e0b','#ef4444'],['#10b981','#059669'],['#ec4899','#8b5cf6'],['#64748b','#334155']];
+      let count=0;
+      for(const [name,data] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'))){
+        if(!data.html.length) continue;
+        const htmlFile=data.html.find(f=>/^index\.html?$/i.test(f.name))||data.html[0];
+        let html=await htmlFile.text();
+        const assetUrls=new Map();
+        for(const [relative,file] of data.all){
+          if(file===htmlFile) continue;
+          const assetUrl=URL.createObjectURL(file); generatedUrls.push(assetUrl); assetUrls.set(relative,assetUrl);
+        }
+        html=html.replace(/(src|href)=(['"])([^'"#][^'"]*)\2/gi,(full,attr,quote,path)=>{
+          if(/^(https?:|data:|blob:|mailto:|tel:|javascript:)/i.test(path)) return full;
+          const clean=decodeURIComponent(path.split('?')[0]).replace(/^\.\//,'').replace(/^\//,'').toLowerCase();
+          return assetUrls.has(clean)?`${attr}=${quote}${assetUrls.get(clean)}${quote}`:full;
+        });
+        const url=URL.createObjectURL(new Blob([html],{type:'text/html'})); generatedUrls.push(url);
+        let iconUrl='';
+        if(data.icons.length){ const key=[...data.all].find(([,f])=>f===data.icons[0])?.[0]; iconUrl=key?assetUrls.get(key):URL.createObjectURL(data.icons[0]); }
+        const color=colors[count%colors.length];
+        APPS.push({id:safeId(name)+'-'+count,name,url,iconUrl,icon:iconUrl?'':'◻',color1:color[0],color2:color[1]}); count++;
+      }
+      renderApps(search.value='');
+      showToast(count?`${count} Programm${count===1?'':'e'} geladen.`:'Keine Programme gefunden. Ordnerstruktur pruefen.');
+      startMenu.classList.remove('open'); folderInput.value='';
+    }
+    chooseFolder.onclick=()=>folderInput.click();
+    folderInput.onchange=async()=>await loadPrograms([...folderInput.files]);
+
+    document.addEventListener('click',e=>{ const opener=e.target.closest('[data-open]'); if(opener)openApp(opener.dataset.open); if(!e.target.closest('.start-menu')&&!e.target.closest('#startButton'))startMenu.classList.remove('open'); });
+    startButton.onclick=()=>{startMenu.classList.toggle('open');if(startMenu.classList.contains('open'))setTimeout(()=>search.focus(),80)};
+    search.oninput=()=>renderApps(search.value);
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')startMenu.classList.remove('open')});
+    function clock(){ const d=new Date(); $('#heroTime').textContent=d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); $('#trayTime').textContent=d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); $('#heroDate').textContent=d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long'}); $('#trayDate').textContent=d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+    renderApps(); clock(); setInterval(clock,1000); openApp('willkommen');
+  </script>
+</body>
+</html>

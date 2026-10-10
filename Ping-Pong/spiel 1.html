@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Pong Pro</title>
+
+<style>
+body {
+    background: black;
+    color: cyan;
+    font-family: Arial;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+canvas {
+    border: 2px solid cyan;
+    box-shadow: 0 0 20px cyan;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px;
+    background: black;
+    color: cyan;
+    border: 2px solid cyan;
+    cursor: pointer;
+}
+button:hover {
+    background: cyan;
+    color: black;
+}
+</style>
+</head>
+
+<body>
+
+<h1>❇︎Ping-Pong❇︎</h1>
+
+<div id="menu">
+    <button onclick="startGame(1,0.02)">1 Spieler (leicht)</button>
+    <button onclick="startGame(1,0.05)">1 Spieler (mittel)</button>
+    <button onclick="startGame(1,0.1)">1 Spieler (schwer)</button>
+    <button onclick="startGame(2)">2 Spieler</button>
+</div>
+
+<h2 id="score"></h2>
+
+<button id="restart" onclick="restartGame()" style="display:none;">Restart</button>
+
+<canvas id="game" width="600" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let started=false;
+let paused=false;
+let mode=0;
+let aiSpeed=0.03;
+
+let p1Y=160;
+let p2Y=160;
+
+let paddleH=80;
+
+let ballX=300;
+let ballY=200;
+let ballSpeedX=4;
+let ballSpeedY=2;
+
+let trail=[];
+
+let p1Score=0;
+let p2Score=0;
+let gameOver=false;
+
+// Start
+function startGame(m,ai=0.03){
+    mode=m;
+    aiSpeed=ai;
+    started=true;
+    resetGame();
+
+    document.getElementById("menu").style.display="none";
+    canvas.style.display="block";
+    document.getElementById("restart").style.display="block";
+}
+
+// Restart
+function restartGame(){
+    resetGame();
+}
+
+// Reset
+function resetGame(){
+    p1Score=0;
+    p2Score=0;
+    document.getElementById("score").innerText="0 : 0";
+    resetBall(4);
+    trail=[];
+    gameOver=false;
+}
+
+// Ball reset
+function resetBall(dir){
+    ballX=300;
+    ballY=200;
+    ballSpeedX=dir;
+    ballSpeedY=(Math.random()-0.5)*6;
+}
+
+// Bounce
+function bounce(pY){
+    let hit=(ballY-(pY+paddleH/2))/(paddleH/2);
+    ballSpeedX*=-1;
+    ballSpeedY=hit*5;
+}
+
+// Steuerung
+let w=false,s=false,up=false,down=false;
+
+document.addEventListener("keydown", e=>{
+    if(["w","s","ArrowUp","ArrowDown"].includes(e.key)){
+        e.preventDefault();
+    }
+
+    if(e.key==="w") w=true;
+    if(e.key==="s") s=true;
+    if(e.key==="ArrowUp") up=true;
+    if(e.key==="ArrowDown") down=true;
+
+    if(e.key==="p") paused=!paused;
+});
+
+document.addEventListener("keyup", e=>{
+    if(e.key==="w") w=false;
+    if(e.key==="s") s=false;
+    if(e.key==="ArrowUp") up=false;
+    if(e.key==="ArrowDown") down=false;
+});
+
+// Update
+function update(){
+    if(!started || paused || gameOver) return;
+
+    if(w) p1Y-=5;
+    if(s) p1Y+=5;
+
+    if(mode===2){
+        if(up) p2Y-=5;
+        if(down) p2Y+=5;
+    } else {
+        if(ballX>300){
+            p2Y += (ballY-(p2Y+paddleH/2))*aiSpeed;
+            p2Y += (Math.random()-0.5)*2;
+        }
+    }
+
+    ballX+=ballSpeedX;
+    ballY+=ballSpeedY;
+
+    // Trail
+    trail.push({x:ballX, y:ballY});
+    if(trail.length>20) trail.shift();
+
+    if(ballY<=0 || ballY>=400) ballSpeedY*=-1;
+
+    if(ballX<=20 && ballY>p1Y && ballY<p1Y+paddleH){
+        bounce(p1Y);
+    }
+
+    if(ballX>=580 && ballY>p2Y && ballY<p2Y+paddleH){
+        bounce(p2Y);
+    }
+
+    if(ballX>600){
+        p1Score++;
+        resetBall(-4);
+    }
+
+    if(ballX<0){
+        p2Score++;
+        resetBall(4);
+    }
+
+    document.getElementById("score").innerText =
+        p1Score + " : " + p2Score;
+
+    if(p1Score>=10 || p2Score>=10){
+        gameOver=true;
+    }
+}
+
+// Draw
+function draw(){
+    ctx.fillStyle="rgba(0,0,0,0.3)";
+    ctx.fillRect(0,0,600,400);
+
+    let color = "cyan"; // ✅ kein Farbwechsel mehr
+
+    ctx.shadowBlur=15;
+    ctx.shadowColor=color;
+
+    // Trail
+    trail.forEach((p,i)=>{
+        ctx.fillStyle=`rgba(0,255,255,${i/20})`;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,6,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    // Linie
+    ctx.setLineDash([5,5]);
+    ctx.strokeStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(300,0);
+    ctx.lineTo(300,400);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle=color;
+
+    ctx.fillRect(10,p1Y,10,paddleH);
+    ctx.fillRect(580,p2Y,10,paddleH);
+
+    ctx.beginPath();
+    ctx.arc(ballX,ballY,8,0,Math.PI*2);
+    ctx.fill();
+
+    if(paused){
+        ctx.font="30px Arial";
+        ctx.fillText("Timeout", 240,200);
+    }
+
+    if(gameOver){
+        ctx.font="30px Arial";
+        let text=(p1Score>p2Score)?"Player 1 gewinnt!":"Player 2 gewinnt!";
+        ctx.fillText(text, 140,200);
+    }
+}
+
+// Loop
+function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
